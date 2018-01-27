@@ -5,7 +5,14 @@
 
 import {Constructor, Context} from '@loopback/context';
 import {expect} from '@loopback/testlab';
-import {Application, Component, Server} from '../..';
+import {Application, Server, Component, CoreBindings} from '../..';
+import {
+  Context,
+  Constructor,
+  Binding,
+  Provider,
+  inject,
+} from '@loopback/context';
 
 describe('Application', () => {
   describe('controller binding', () => {
@@ -35,9 +42,26 @@ describe('Application', () => {
 
   describe('component binding', () => {
     let app: Application;
+    const binding = new Binding('foo');
     class MyController {}
+    class MyClass {}
+    class MyProvider implements Provider<string> {
+      value() {
+        return 'my-str';
+      }
+    }
     class MyComponent implements Component {
       controllers = [MyController];
+      bindings = [binding];
+      classes = {'my-class': MyClass};
+      providers = {'my-provider': MyProvider};
+    }
+
+    class MyComponentWithDI implements Component {
+      constructor(@inject(CoreBindings.APPLICATION_INSTANCE) ctx: Context) {
+        // Porgramatically bind to the context
+        ctx.bind('foo').to('bar');
+      }
     }
 
     beforeEach(givenApp);
@@ -54,6 +78,32 @@ describe('Application', () => {
       expect(findKeysByTag(app, 'component')).to.containEql(
         'components.my-component',
       );
+    });
+
+    it('binds bindings from a component', () => {
+      app.component(MyComponent);
+      expect(app.contains('controllers.MyController')).to.be.true();
+      expect(app.getBinding('foo')).to.be.exactly(binding);
+    });
+
+    it('binds classes from a component', () => {
+      app.component(MyComponent);
+      expect(app.contains('my-class')).to.be.true();
+      expect(app.getBinding('my-class').valueConstructor).to.be.exactly(
+        MyClass,
+      );
+    });
+
+    it('binds providers from a component', () => {
+      app.component(MyComponent);
+      expect(app.contains('my-provider')).to.be.true();
+      expect(app.getSync('my-provider')).to.be.eql('my-str');
+    });
+
+    it('binds from a component constructor', () => {
+      app.component(MyComponentWithDI);
+      expect(app.contains('foo')).to.be.true();
+      expect(app.getSync('foo')).to.be.eql('bar');
     });
 
     function givenApp() {
