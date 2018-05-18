@@ -3,8 +3,8 @@
 // This file is licensed under the MIT License.
 // License text available at https://opensource.org/licenses/MIT
 
-import {Provider} from '@loopback/context';
-import {Application} from '@loopback/core';
+import {Provider, Binding} from '@loopback/context';
+import {Application, Component} from '@loopback/core';
 
 /**
  * Interface for classes with `new` operator.
@@ -120,7 +120,7 @@ export function ServiceMixin<T extends Class<any>>(superClass: T) {
 export interface ApplicationWithServices extends Application {
   // tslint:disable-next-line:no-any
   serviceProvider<S>(provider: Class<Provider<S>>): void;
-  component(component: Class<{}>): void;
+  component(component: Class<Component> | Component): Binding<Component>;
   mountComponentServices(component: Class<{}>): void;
 }
 

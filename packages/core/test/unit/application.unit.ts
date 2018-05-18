@@ -3,7 +3,6 @@
 // This file is licensed under the MIT License.
 // License text available at https://opensource.org/licenses/MIT
 
-import {Constructor, Context} from '@loopback/context';
 import {expect} from '@loopback/testlab';
 import {Application, Server, Component, CoreBindings} from '../..';
 import {
@@ -13,6 +12,7 @@ import {
   Provider,
   inject,
 } from '@loopback/context';
+import {component} from '../../src';
 
 describe('Application', () => {
   describe('controller binding', () => {
@@ -57,19 +57,57 @@ describe('Application', () => {
       providers = {'my-provider': MyProvider};
     }
 
+    @component({
+      controllers: [MyController],
+      bindings: [binding],
+      classes: {'my-class': MyClass},
+      providers: {'my-provider': MyProvider},
+    })
+    class MyComponentWithDecoration {}
+
+    const aComponent: Component = {
+      controllers: [MyController],
+      name: 'AnotherComponent',
+    };
+
     class MyComponentWithDI implements Component {
       constructor(@inject(CoreBindings.APPLICATION_INSTANCE) ctx: Context) {
-        // Porgramatically bind to the context
+        // Programmatically bind to the context
         ctx.bind('foo').to('bar');
       }
     }
 
     beforeEach(givenApp);
 
-    it('binds a component', () => {
+    it('binds a component by class', () => {
       app.component(MyComponent);
       expect(findKeysByTag(app, 'component')).to.containEql(
         'components.MyComponent',
+      );
+    });
+
+    it('binds a component by class with @component', () => {
+      app.component(MyComponentWithDecoration);
+      expect(findKeysByTag(app, 'component')).to.containEql(
+        'components.MyComponentWithDecoration',
+      );
+      expect(app.contains('my-provider')).to.be.true();
+      expect(app.contains('my-class')).to.be.true();
+      expect(app.contains('foo')).to.be.true();
+      expect(app.contains('controllers.MyController')).to.be.true();
+    });
+
+    it('binds a component by instance with a custom name', () => {
+      app.component(aComponent, 'YourComponent');
+      expect(findKeysByTag(app, 'component')).to.containEql(
+        'components.YourComponent',
+      );
+    });
+
+    it('binds a component by instance', () => {
+      app.component(aComponent);
+      expect(findKeysByTag(app, 'component')).to.containEql(
+        'components.AnotherComponent',
       );
     });
 

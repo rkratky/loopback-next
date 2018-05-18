@@ -6,8 +6,8 @@
 import {Class} from '../common-types';
 import {Repository} from '../repositories/repository';
 import {juggler} from '../repositories/legacy-juggler-bridge';
-import {Application} from '@loopback/core';
-import {BindingScope} from '@loopback/context';
+import {Application, Component} from '@loopback/core';
+import {BindingScope, Binding} from '@loopback/context';
 
 /**
  * A mixin class for Application that creates a .repository()
@@ -178,7 +178,7 @@ export interface ApplicationWithRepositories extends Application {
     dataSource: Class<juggler.DataSource> | juggler.DataSource,
     name?: string,
   ): void;
-  component(component: Class<{}>): void;
+  component(component: Class<Component> | Component): Binding<Component>;
   mountComponentRepositories(component: Class<{}>): void;
 }
 
@@ -283,7 +283,11 @@ export class RepositoryMixinDoc {
    * app.component(ProductComponent);
    * ```
    */
-  public component(component: Class<{}>) {}
+  public component(
+    component: Class<Component> | Component,
+  ): Binding<Component> {
+    return new Binding<Component>('');
+  }
 
   /**
    * Get an instance of a component and mount all it's

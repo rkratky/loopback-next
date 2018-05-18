@@ -3,7 +3,15 @@
 // This file is licensed under the MIT License.
 // License text available at https://opensource.org/licenses/MIT
 
-import {Constructor, Provider, BoundValue, Binding} from '@loopback/context';
+import {
+  Constructor,
+  Provider,
+  BoundValue,
+  Binding,
+  ClassDecoratorFactory,
+  MetadataInspector,
+  MetadataAccessor,
+} from '@loopback/context';
 import {Server} from './server';
 import {Application, ControllerClass} from './application';
 
@@ -53,47 +61,78 @@ export interface Component {
   [prop: string]: any;
 }
 
+export const COMPONENT_KEY = MetadataAccessor.create<Component, ClassDecorator>(
+  'component',
+);
+
+/**
+ * Decorator for a component. For example:
+ * ```ts
+ * @component({
+ *   controllers: [MyController],
+ *   bindings: [binding],
+ *   classes: {'my-class': MyClass},
+ *   providers: {'my-provider': MyProvider},
+ * })
+ * class MyComponentWithDecoration {}
+ * ```
+ * @param spec Component spec
+ */
+export function component(spec: Component = {}) {
+  return ClassDecoratorFactory.createDecorator<Component>(COMPONENT_KEY, spec);
+}
+
 /**
  * Mount a component to an Application.
  *
- * @export
  * @param {Application} app
- * @param {Component} component
+ * @param {Component} componentInst
  */
-export function mountComponent(app: Application, component: Component) {
-  if (component.classes) {
-    for (const classKey in component.classes) {
+export function mountComponent(app: Application, componentInst: Component) {
+  const cls = componentInst.constructor;
+  if (typeof cls === 'function') {
+    const decoratedComponent = MetadataInspector.getClassMetadata(
+      COMPONENT_KEY,
+      cls,
+    );
+    if (decoratedComponent) {
+      mountComponent(app, decoratedComponent);
+    }
+  }
+
+  if (componentInst.classes) {
+    for (const classKey in componentInst.classes) {
       const binding = Binding.bind(classKey).toClass(
-        component.classes[classKey],
+        componentInst.classes[classKey],
       );
       app.add(binding);
     }
   }
 
-  if (component.providers) {
-    for (const providerKey in component.providers) {
+  if (componentInst.providers) {
+    for (const providerKey in componentInst.providers) {
       const binding = Binding.bind(providerKey).toProvider(
-        component.providers[providerKey],
+        componentInst.providers[providerKey],
       );
       app.add(binding);
     }
   }
 
-  if (component.bindings) {
-    for (const binding of component.bindings) {
+  if (componentInst.bindings) {
+    for (const binding of componentInst.bindings) {
       app.add(binding);
     }
   }
 
-  if (component.controllers) {
-    for (const controllerCtor of component.controllers) {
+  if (componentInst.controllers) {
+    for (const controllerCtor of componentInst.controllers) {
       app.controller(controllerCtor);
     }
   }
 
-  if (component.servers) {
-    for (const serverKey in component.servers) {
-      app.server(component.servers[serverKey], serverKey);
+  if (componentInst.servers) {
+    for (const serverKey in componentInst.servers) {
+      app.server(componentInst.servers[serverKey], serverKey);
     }
   }
 }
