@@ -6,6 +6,7 @@
 import {
   RequestBodyObject,
   SchemaObject,
+  ReferenceObject,
   SchemasObject,
 } from '@loopback/openapi-v3-types';
 import * as AJV from 'ajv';
@@ -18,11 +19,15 @@ import * as _ from 'lodash';
 const toJsonSchema = require('openapi-schema-to-json-schema');
 const debug = debugModule('loopback:rest:validation');
 
+export interface RequestBodyValidationOptions extends AJV.Options {
+  schema?: SchemaObject | ReferenceObject;
+}
+
 /**
  * Check whether the request body is valid according to the provided OpenAPI schema.
  * The JSON schema is generated from the OpenAPI schema which is typically defined
  * by `@requestBody()`.
- * The validation leverages AJS shema validator.
+ * The validation leverages AJS schema validator.
  * @param body The body data from an HTTP request.
  * @param requestBodySpec The OpenAPI requestBody specification defined in `@requestBody()`.
  * @param globalSchemas The referenced schemas generated from `OpenAPISpec.components.schemas`.
@@ -32,7 +37,7 @@ export function validateRequestBody(
   body: any,
   requestBodySpec: RequestBodyObject | undefined,
   globalSchemas?: SchemasObject,
-  options?: AJV.Options,
+  options: RequestBodyValidationOptions = {},
 ) {
   if (!requestBodySpec) return;
 
@@ -47,7 +52,7 @@ export function validateRequestBody(
     throw err;
   }
 
-  const schema = getRequestBodySchema(requestBodySpec);
+  const schema = options.schema || getRequestBodySchema(requestBodySpec);
   debug('Request body schema: %j', util.inspect(schema, {depth: null}));
   if (!schema) return;
 

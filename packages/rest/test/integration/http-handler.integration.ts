@@ -272,7 +272,9 @@ describe('HttpHandler', () => {
         .send('<key>value</key>')
         .expect(415, {
           error: {
-            message: 'Content-type application/xml is not supported.',
+            message:
+              'Content-type application/xml does not match ' +
+              '[application/json,application/x-www-form-urlencoded].',
             name: 'UnsupportedMediaTypeError',
             statusCode: 415,
           },
@@ -293,7 +295,7 @@ describe('HttpHandler', () => {
             statusCode: 413,
           },
         })
-        .catch(catchEpipeError)
+        .catch(ignorePipeError)
         .then(() => expect(bodyParamControllerInvoked).be.false());
     });
 
@@ -310,7 +312,7 @@ describe('HttpHandler', () => {
             statusCode: 413,
           },
         })
-        .catch(catchEpipeError)
+        .catch(ignorePipeError)
         .then(() => expect(bodyParamControllerInvoked).be.false());
     });
 
@@ -326,7 +328,7 @@ describe('HttpHandler', () => {
         .expect(200, body);
     });
 
-    function catchEpipeError(err: HttpErrors.HttpError) {
+    function ignorePipeError(err: HttpErrors.HttpError) {
       // The server side can close the socket before the client
       // side can send out all data. For example, `response.end()`
       // is called before all request data has been processed due
@@ -349,6 +351,9 @@ describe('HttpHandler', () => {
             required: true,
             content: {
               'application/json': {
+                schema: {type: 'object'},
+              },
+              'application/x-www-form-urlencoded': {
                 schema: {type: 'object'},
               },
             },

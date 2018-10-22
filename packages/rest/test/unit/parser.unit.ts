@@ -17,6 +17,7 @@ import {
 import {
   createResolvedRoute,
   parseOperationArgs,
+  loadRequestBodyIfNeeded,
   PathParameterValues,
   Request,
   RestHttpErrors,
@@ -167,6 +168,65 @@ describe('operationArgsParser', () => {
     const args = await parseOperationArgs(req, route);
 
     expect(args).to.eql([{key1: ['value1', 'value2']}]);
+  });
+
+  describe('body parser', () => {
+    it('parses body parameter with multiple media types', async () => {
+      const req = givenRequest({
+        url: '/',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        payload: 'key=value',
+      });
+
+      const urlencodedSchema = {
+        type: 'object',
+        properties: {
+          key: {type: 'string'},
+        },
+      };
+      const spec = givenOperationWithRequestBody({
+        description: 'data',
+        content: {
+          'application/json': {schema: {type: 'object'}},
+          'application/x-www-form-urlencoded': {
+            schema: urlencodedSchema,
+          },
+        },
+      });
+      const requestBody = await loadRequestBodyIfNeeded(spec, req);
+      expect(requestBody).to.eql({
+        value: {key: 'value'},
+        coercionRequired: true,
+        mediaType: 'application/x-www-form-urlencoded',
+        schema: urlencodedSchema,
+      });
+    });
+
+    it('allows application/json to be default', async () => {
+      const req = givenRequest({
+        url: '/',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        payload: {key: 'value'},
+      });
+
+      const defaultSchema = {
+        type: 'object',
+      };
+      const spec = givenOperationWithRequestBody({
+        description: 'data',
+        content: {},
+      });
+      const requestBody = await loadRequestBodyIfNeeded(spec, req);
+      expect(requestBody).to.eql({
+        value: {key: 'value'},
+        mediaType: 'application/json',
+        schema: defaultSchema,
+      });
+    });
   });
 
   context('in:query style:deepObject', () => {

@@ -8,6 +8,7 @@ import {
   isReferenceObject,
   OperationObject,
   ParameterObject,
+  ReferenceObject,
   SchemasObject,
 } from '@loopback/openapi-v3-types';
 import * as debugModule from 'debug';
@@ -26,6 +27,7 @@ import {
   RequestBodyParserOptions,
 } from './types';
 import {validateRequestBody} from './validation/request-body.validator';
+import {is} from 'type-is';
 
 type HttpError = HttpErrors.HttpError;
 
@@ -38,6 +40,8 @@ Object.freeze(QUERY_NOT_PARSED);
 type RequestBody = {
   value: any | undefined;
   coercionRequired?: boolean;
+  mediaType?: string;
+  schema?: SchemasObject | ReferenceObject;
 };
 
 const parseJsonBody: (
@@ -55,14 +59,7 @@ const parseFormBody: (
  * @param req Http request
  */
 function getContentType(req: Request): string | undefined {
-  const val = req.headers['content-type'];
-  if (typeof val === 'string') {
-    return val;
-  } else if (Array.isArray(val)) {
-    // Assume only one value is present
-    return val[0];
-  }
-  return undefined;
+  return req.get('content-type');
 }
 
 /**
@@ -90,54 +87,92 @@ export async function parseOperationArgs(
   );
 }
 
-async function loadRequestBodyIfNeeded(
+function normalizeParsingError(err: HttpError) {
+  debug('Cannot parse request body %j', err);
+  if (!err.statusCode || err.statusCode >= 500) {
+    err.statusCode = 400;
+  }
+  return err;
+}
+
+export async function loadRequestBodyIfNeeded(
   operationSpec: OperationObject,
   request: Request,
   options: RequestBodyParserOptions = {},
 ): Promise<RequestBody> {
-  if (!operationSpec.requestBody) return Promise.resolve({value: undefined});
+  const requestBody: RequestBody = {
+    value: undefined,
+  };
+  if (!operationSpec.requestBody) return Promise.resolve(requestBody);
 
   debug('Request body parser options: %j', options);
 
-  const contentType = getContentType(request);
+  const contentType = getContentType(request) || 'application/json';
   debug('Loading request body with content type %j', contentType);
 
-  if (
-    contentType &&
-    contentType.startsWith('application/x-www-form-urlencoded')
-  ) {
-    const body = await parseFormBody(request, options).catch(
-      (err: HttpError) => {
-        debug('Cannot parse request body %j', err);
-        if (!err.statusCode || err.statusCode >= 500) {
-          err.statusCode = 400;
-        }
-        throw err;
-      },
-    );
-    // form parser returns an object with prototype
-    return {
-      value: Object.assign({}, body),
-      coercionRequired: true,
+  // the type of `operationSpec.requestBody` could be `RequestBodyObject`
+  // or `ReferenceObject`, resolving a `$ref` value is not supported yet.
+  if (isReferenceObject(operationSpec.requestBody)) {
+    throw new Error('$ref requestBody is not supported yet.');
+  }
+
+  let content = operationSpec.requestBody.content || {};
+  if (!Object.keys(content).length) {
+    content = {
+      // default to allow json and urlencoded
+      'application/json': {schema: {type: 'object'}},
+      'application/x-www-form-urlencoded': {schema: {type: 'object'}},
     };
   }
 
-  if (contentType && !/json/.test(contentType)) {
+  // Check of the request content type matches one of the expected media
+  // types in the request body spec
+  let matchedMediaType: string | false = false;
+  for (const type in content) {
+    matchedMediaType = is(contentType, type);
+    if (matchedMediaType) {
+      requestBody.mediaType = type;
+      requestBody.schema = content[type].schema;
+      break;
+    }
+  }
+
+  if (!matchedMediaType) {
+    // No matching media type found, fail fast
     throw new HttpErrors.UnsupportedMediaType(
-      `Content-type ${contentType} is not supported.`,
+      `Content-type ${contentType} does not match [${Object.keys(content)}].`,
     );
   }
 
-  const jsonBody = await parseJsonBody(request, options).catch(
-    (err: HttpError) => {
-      debug('Cannot parse request body %j', err);
-      if (!err.statusCode || err.statusCode >= 500) {
-        err.statusCode = 400;
-      }
-      throw err;
-    },
+  if (is(matchedMediaType, 'urlencoded')) {
+    try {
+      const body = await parseFormBody(request, options);
+      return Object.assign(requestBody, {
+        // form parser returns an object without prototype
+        // create a new copy to simplify shouldjs assertions
+        value: Object.assign({}, body),
+        // urlencoded body only provide string values
+        // set the flag so that AJV can coerce them based on the schema
+        coercionRequired: true,
+      });
+    } catch (err) {
+      throw normalizeParsingError(err);
+    }
+  }
+
+  if (is(matchedMediaType, 'json')) {
+    try {
+      const jsonBody = await parseJsonBody(request, options);
+      requestBody.value = jsonBody;
+      return requestBody;
+    } catch (err) {
+      throw normalizeParsingError(err);
+    }
+  }
+
+  throw new HttpErrors.UnsupportedMediaType(
+    `Content-type ${matchedMediaType} is not supported.`,
   );
-  return {value: jsonBody};
 }
 
 function buildOperationArguments(
@@ -175,6 +210,7 @@ function buildOperationArguments(
   debug('Validating request body - value %j', body);
   validateRequestBody(body.value, operationSpec.requestBody, globalSchemas, {
     coerceTypes: body.coercionRequired,
+    schema: body.schema,
   });
 
   if (requestBodyIndex > -1) paramArgs.splice(requestBodyIndex, 0, body.value);
