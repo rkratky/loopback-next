@@ -59,7 +59,7 @@ describe('operationArgsParser', () => {
     expect(args).to.eql([{key: 'value'}]);
   });
 
-  it('parses body parameter for form data', async () => {
+  it('parses body parameter for urlencoded', async () => {
     const req = givenRequest({
       url: '/',
       headers: {
@@ -81,7 +81,7 @@ describe('operationArgsParser', () => {
     expect(args).to.eql([{key: 'value'}]);
   });
 
-  it('parses body parameter for form data with simple types', async () => {
+  it('parses body parameter for urlencoded with simple types', async () => {
     const req = givenRequest({
       url: '/',
       headers: {
@@ -112,7 +112,7 @@ describe('operationArgsParser', () => {
     expect(args).to.eql([{key1: 'value', key2: 1, key3: true}]);
   });
 
-  it('parses body parameter for form data with number[] types', async () => {
+  it('parses body parameter for urlencoded with number[] types', async () => {
     const req = givenRequest({
       url: '/',
       headers: {
@@ -141,7 +141,54 @@ describe('operationArgsParser', () => {
     expect(args).to.eql([{key: [1, 2]}]);
   });
 
-  it('parses body parameter for form data with string[] types', async () => {
+  it('parses body parameter for urlencoded with complex types', async () => {
+    const req = givenRequest({
+      url: '/',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      payload:
+        'name=IBM%20HQ&location[lat]=0.741895&location[lng]=-73.989308&tags[0]=IT&tags[1]=NY',
+    });
+
+    const spec = givenOperationWithRequestBody({
+      description: 'data',
+      content: {
+        'application/x-www-form-urlencoded': {
+          schema: {
+            type: 'object',
+            properties: {
+              name: {type: 'string'},
+              location: {
+                type: 'object',
+                properties: {
+                  lat: {type: 'number'},
+                  lng: {type: 'number'},
+                },
+              },
+              tags: {
+                type: 'array',
+                items: {type: 'string'},
+              },
+            },
+          },
+        },
+      },
+    });
+    const route = givenResolvedRoute(spec);
+
+    const args = await parseOperationArgs(req, route);
+
+    expect(args).to.eql([
+      {
+        name: 'IBM HQ',
+        location: {lat: 0.741895, lng: -73.989308},
+        tags: ['IT', 'NY'],
+      },
+    ]);
+  });
+
+  it('parses body parameter for urlencoded with string[] types', async () => {
     const req = givenRequest({
       url: '/',
       headers: {

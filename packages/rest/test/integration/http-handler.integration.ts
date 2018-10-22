@@ -233,6 +233,10 @@ describe('HttpHandler', () => {
   });
 
   context('with a body request route', () => {
+    let bodyParamControllerInvoked = false;
+    beforeEach(() => {
+      bodyParamControllerInvoked = false;
+    });
     beforeEach(givenBodyParamController);
 
     it('returns the value sent in json-encoded body', () => {
@@ -281,7 +285,6 @@ describe('HttpHandler', () => {
         });
     });
 
-    let bodyParamControllerInvoked = false;
     it('rejects over-limit request form body', () => {
       logErrorsExcept(413);
       return client
@@ -328,6 +331,11 @@ describe('HttpHandler', () => {
         .expect(200, body);
     });
 
+    /**
+     * Ignore the EPIPE error
+     * See https://github.com/nodejs/node/issues/12339
+     * @param err
+     */
     function ignorePipeError(err: HttpErrors.HttpError) {
       // The server side can close the socket before the client
       // side can send out all data. For example, `response.end()`
@@ -342,7 +350,6 @@ describe('HttpHandler', () => {
     }
 
     function givenBodyParamController() {
-      bodyParamControllerInvoked = false;
       const spec = anOpenApiSpec()
         .withOperation('post', '/show-body', {
           'x-operation-name': 'showBody',

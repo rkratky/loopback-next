@@ -80,9 +80,20 @@ export type LogError = (
 
 /**
  * Options for request body parsing
+ * See https://github.com/Raynos/body
  */
 export type RequestBodyParserOptions = {
+  /**
+   * The limit of request body size. By default it is 1MB (1024 * 1024). If a
+   * stream contains more then 1MB, it returns an error. This prevents someone
+   * from attacking your HTTP server with an infinite body causing an out of
+   * memory attack.
+   */
   limit?: number;
+  /**
+   * All encodings that are valid on a Buffer are valid options. It defaults to
+   * 'utf8'
+   */
   encoding?: string;
   [property: string]: any;
 };

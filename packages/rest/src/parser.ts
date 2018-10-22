@@ -28,6 +28,7 @@ import {
 } from './types';
 import {validateRequestBody} from './validation/request-body.validator';
 import {is} from 'type-is';
+import * as qs from 'qs';
 
 type HttpError = HttpErrors.HttpError;
 
@@ -146,7 +147,20 @@ export async function loadRequestBodyIfNeeded(
 
   if (is(matchedMediaType, 'urlencoded')) {
     try {
-      const body = await parseFormBody(request, options);
+      const body = await parseFormBody(
+        request,
+        // use `qs` modules to handle complex objects
+        Object.assign(
+          {
+            querystring: {
+              parse: (str: string, cb: Function) => {
+                cb(null, qs.parse(str));
+              },
+            },
+          },
+          options,
+        ),
+      );
       return Object.assign(requestBody, {
         // form parser returns an object without prototype
         // create a new copy to simplify shouldjs assertions
