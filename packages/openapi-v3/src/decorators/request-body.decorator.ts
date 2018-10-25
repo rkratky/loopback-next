@@ -81,6 +81,7 @@ export function requestBody(requestBodySpec?: Partial<RequestBodyObject>) {
   return function(target: Object, member: string, index: number) {
     debug('@requestBody() on %s.%s', target.constructor.name, member);
     debug('  parameter index: %s', index);
+    /* istanbul ignore if */
     if (debug.enabled)
       debug('  options: %s', inspect(requestBodySpec, {depth: null}));
 
@@ -96,6 +97,7 @@ export function requestBody(requestBodySpec?: Partial<RequestBodyObject>) {
 
     const paramType = paramTypes[index];
     const schema = resolveSchema(paramType);
+    /* istanbul ignore if */
     if (debug.enabled)
       debug('  inferred schema: %s', inspect(schema, {depth: null}));
     requestBodySpec.content = _.mapValues(requestBodySpec.content, c => {
@@ -111,6 +113,7 @@ export function requestBody(requestBodySpec?: Partial<RequestBodyObject>) {
       requestBodySpec[REQUEST_BODY_INDEX] = index;
     }
 
+    /* istanbul ignore if */
     if (debug.enabled)
       debug('  final spec: ', inspect(requestBodySpec, {depth: null}));
     ParameterDecoratorFactory.createDecorator<RequestBodyObject>(

@@ -194,6 +194,45 @@ describe('RestServer.getApiSpec()', () => {
     });
   });
 
+  it('emits all media types for request body', () => {
+    const opSepc = {
+      requestBody: {
+        description: 'Any object value.',
+        required: true,
+        content: {
+          'application/json': {
+            schema: {type: 'object'},
+          },
+          'application/x-www-form-urlencoded': {
+            schema: {type: 'object'},
+          },
+        },
+      },
+      responses: {
+        200: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+              },
+            },
+          },
+          description: '',
+        },
+      },
+    };
+    class MyController {
+      @post('/show-body', opSepc)
+      showBody(body: object) {
+        return body;
+      }
+    }
+    app.controller(MyController);
+
+    const spec = server.getApiSpec();
+    expect(spec.paths['/show-body'].post).to.containDeep(opSepc);
+  });
+
   it('returns routes registered via app.controller()', () => {
     class MyController {
       @get('/greet')

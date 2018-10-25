@@ -9,6 +9,7 @@ import {
   OperationObject,
   ParameterObject,
   ReferenceObject,
+  SchemaObject,
   SchemasObject,
 } from '@loopback/openapi-v3-types';
 import * as debugModule from 'debug';
@@ -38,11 +39,11 @@ export const QUERY_NOT_PARSED = {};
 Object.freeze(QUERY_NOT_PARSED);
 
 // tslint:disable:no-any
-type RequestBody = {
+export type RequestBody = {
   value: any | undefined;
   coercionRequired?: boolean;
   mediaType?: string;
-  schema?: SchemasObject | ReferenceObject;
+  schema?: SchemaObject | ReferenceObject;
 };
 
 const parseJsonBody: (
@@ -222,10 +223,7 @@ function buildOperationArguments(
   }
 
   debug('Validating request body - value %j', body);
-  validateRequestBody(body.value, operationSpec.requestBody, globalSchemas, {
-    coerceTypes: body.coercionRequired,
-    schema: body.schema,
-  });
+  validateRequestBody(body, operationSpec.requestBody, globalSchemas);
 
   if (requestBodyIndex > -1) paramArgs.splice(requestBodyIndex, 0, body.value);
   return paramArgs;
