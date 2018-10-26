@@ -141,8 +141,9 @@ export async function loadRequestBodyIfNeeded(
 
   if (!matchedMediaType) {
     // No matching media type found, fail fast
-    throw new HttpErrors.UnsupportedMediaType(
-      `Content-type ${contentType} does not match [${Object.keys(content)}].`,
+    throw RestHttpErrors.unsupportedMediaType(
+      contentType,
+      Object.keys(content),
     );
   }
 
@@ -185,9 +186,7 @@ export async function loadRequestBodyIfNeeded(
     }
   }
 
-  throw new HttpErrors.UnsupportedMediaType(
-    `Content-type ${matchedMediaType} is not supported.`,
-  );
+  throw RestHttpErrors.unsupportedMediaType(matchedMediaType);
 }
 
 function buildOperationArguments(

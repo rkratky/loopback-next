@@ -11,7 +11,7 @@ import {
   createControllerFactoryForClass,
 } from '../../..';
 import {get, post, requestBody} from '@loopback/openapi-v3';
-import {anOpenApiSpec} from '@loopback/openapi-spec-builder';
+import {anOpenApiSpec, anOperationSpec} from '@loopback/openapi-spec-builder';
 import {model, property} from '@loopback/repository';
 
 describe('RestServer.getApiSpec()', () => {
@@ -195,8 +195,8 @@ describe('RestServer.getApiSpec()', () => {
   });
 
   it('emits all media types for request body', () => {
-    const opSepc = {
-      requestBody: {
+    const opSepc = anOperationSpec()
+      .withRequestBody({
         description: 'Any object value.',
         required: true,
         content: {
@@ -207,20 +207,19 @@ describe('RestServer.getApiSpec()', () => {
             schema: {type: 'object'},
           },
         },
-      },
-      responses: {
-        200: {
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-              },
+      })
+      .withResponse(200, {
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
             },
           },
-          description: '',
         },
-      },
-    };
+        description: '',
+      })
+      .build();
+
     class MyController {
       @post('/show-body', opSepc)
       showBody(body: object) {

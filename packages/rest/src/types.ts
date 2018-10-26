@@ -85,7 +85,7 @@ export type LogError = (
 export type RequestBodyParserOptions = {
   /**
    * The limit of request body size. By default it is 1MB (1024 * 1024). If a
-   * stream contains more then 1MB, it returns an error. This prevents someone
+   * stream contains more than 1MB, it returns an error. This prevents someone
    * from attacking your HTTP server with an infinite body causing an out of
    * memory attack.
    */

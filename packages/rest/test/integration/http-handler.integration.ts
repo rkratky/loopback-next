@@ -276,6 +276,7 @@ describe('HttpHandler', () => {
         .send('<key>value</key>')
         .expect(415, {
           error: {
+            code: 'UNSUPPORTED_MEDIA_TYPE',
             message:
               'Content-type application/xml does not match ' +
               '[application/json,application/x-www-form-urlencoded].',

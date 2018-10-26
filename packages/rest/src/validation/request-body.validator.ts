@@ -90,7 +90,7 @@ function validateValueAgainstSchema(
   body: any,
   schema: SchemaObject | ReferenceObject,
   globalSchemas?: SchemasObject,
-  options?: AJV.Options,
+  options?: RequestBodyValidationOptions,
 ) {
   let validate;
 
@@ -128,7 +128,7 @@ function validateValueAgainstSchema(
 function createValidator(
   schema: SchemaObject,
   globalSchemas?: SchemasObject,
-  options?: AJV.Options,
+  options?: RequestBodyValidationOptions,
 ): Function {
   const jsonSchema = convertToJsonSchema(schema);
 
