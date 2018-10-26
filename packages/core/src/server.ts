@@ -3,6 +3,8 @@
 // This file is licensed under the MIT License.
 // License text available at https://opensource.org/licenses/MIT
 
+import {LifeCycleAction} from './lifecycle';
+
 /**
  * Defines the requirements to implement a Server for LoopBack applications:
  * start() : Promise<void>
@@ -15,18 +17,9 @@
  * @export
  * @interface Server
  */
-export interface Server {
+export interface Server extends LifeCycleAction {
   /**
    * Tells whether the server is listening for connections or not
    */
   readonly listening: boolean;
-
-  /**
-   * Start the server
-   */
-  start(): Promise<void>;
-  /**
-   * Stop the server
-   */
-  stop(): Promise<void>;
 }

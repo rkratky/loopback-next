@@ -6,6 +6,8 @@
 import {Constructor, Context} from '@loopback/context';
 import {expect} from '@loopback/testlab';
 import {Application, Component, Server} from '../..';
+import {LifeCycleAction} from '../../src/lifecycle';
+import {CoreBindings} from '../../src';
 
 describe('Application', () => {
   describe('controller binding', () => {
@@ -94,12 +96,30 @@ describe('Application', () => {
     it('starts all injected servers', async () => {
       const app = new Application();
       app.component(FakeComponent);
-
+      const component = await app.get<FakeComponent>(
+        `${CoreBindings.COMPONENTS}.FakeComponent`,
+      );
+      expect(component.status).to.equal('not-initialized');
       await app.start();
       const server = await app.getServer(FakeServer);
+
       expect(server).to.not.be.null();
       expect(server.listening).to.equal(true);
+      expect(component.status).to.equal('started');
       await app.stop();
+    });
+
+    it('starts/stops all registered components', async () => {
+      const app = new Application();
+      app.component(FakeComponent);
+      const component = await app.get<FakeComponent>(
+        `${CoreBindings.COMPONENTS}.FakeComponent`,
+      );
+      expect(component.status).to.equal('not-initialized');
+      await app.start();
+      expect(component.status).to.equal('started');
+      await app.stop();
+      expect(component.status).to.equal('stopped');
     });
 
     it('does not attempt to start poorly named bindings', async () => {
@@ -118,7 +138,8 @@ describe('Application', () => {
   }
 });
 
-class FakeComponent implements Component {
+class FakeComponent implements Component, LifeCycleAction {
+  status = 'not-initialized';
   servers: {
     [name: string]: Constructor<Server>;
   };
@@ -127,6 +148,12 @@ class FakeComponent implements Component {
       FakeServer,
       FakeServer2: FakeServer,
     };
+  }
+  start() {
+    this.status = 'started';
+  }
+  stop() {
+    this.status = 'stopped';
   }
 }
 

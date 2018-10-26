@@ -38,6 +38,12 @@ export namespace CoreBindings {
    */
   export const SERVERS = 'servers';
 
+  // component
+  /**
+   * Binding key for components
+   */
+  export const COMPONENTS = 'components';
+
   // controller
   /**
    * Binding key for the controller class resolved in the current request
